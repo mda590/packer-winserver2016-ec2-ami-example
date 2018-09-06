@@ -1,0 +1,88 @@
+{
+    "variables": {
+        "name": "packer-ami-windows_server-2016-english-full",
+        "image_version": "2018.03.20a",
+        "aws_region": "us-east-1",
+        "aws_instance_type": "t2.medium",
+        "description": "Packer - Windows_Server-2016-English-Full",
+        "instance_profile_arn": "role-ec2-ami-creation",
+        "subnet_id": "subnet-XXXXXXXX",
+        "vpc_id": "vpc-XXXXXXXX"
+    },
+    "builders": [
+        {
+            "name": "windows-server-2016-base-image",
+            "type": "amazon-ebs",
+            "communicator": "winrm",
+            "winrm_username": "Administrator",
+            "ami_name": "{{user `name`}}-Base-{{user `image_version`}}",
+            "ami_description": "{{user `description`}} - Base - {{user `image_version`}}",
+            "region": "{{user `aws_region`}}",
+            "instance_type": "{{user `aws_instance_type`}}",
+            "availability_zone": "us-east-1a",
+            "encrypt_boot": false,
+            "iam_instance_profile": "{{user `instance_profile_arn`}}",
+            "launch_block_device_mappings": [
+                {
+                    "device_name": "/dev/sda1",
+                    "volume_type": "gp2",
+                    "volume_size": 30,
+                    "delete_on_termination": true
+                }
+            ],
+            "run_tags": {
+                "Name": "packer-ami-creation-ec2"
+            },
+            "run_volume_tags": {
+                "Name": "packer-ami-creation-ebs"
+            },
+            "security_group_ids": [
+                "sg-XXXXXXXX",
+                "sg-XXXXXXXX"
+            ],
+            "snapshot_tags": {
+                "Name": "{{user `name`}}-Base-{{user `image_version`}}"
+            },
+            "source_ami_filter": {
+                "filters": {
+                    "virtualization-type": "hvm",
+                    "root-device-type": "ebs",
+                    "name": "Windows_Server-2016-English-Full-Base-*",
+                    "owner-alias": "amazon",
+                    "architecture": "x86_64"
+                },
+                "owners": [
+                    "801119661308"
+                ],
+                "most_recent": true
+            },
+            "ssh_interface": "private_ip",
+            "subnet_id": "{{user `subnet_id`}}",
+            "tags": {
+                "Name": "{{user `name`}}-Base-{{user `image_version`}}",
+                "ami-os": "Windows Server 2016",
+                "ami-datescreated": "{{timestamp}}"
+            },
+            "user_data_file": "user_data.ps1",
+            "vpc_id": "{{user `vpc_id`}}"
+        }  
+    ],
+    "provisioners": [
+        {
+            "type": "powershell",
+            "script": "bootstrap.ps1"
+        },
+        {
+            "type": "powershell",
+            "inline": [
+              "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\InitializeInstance.ps1 -Schedule",
+              "C:\\ProgramData\\Amazon\\EC2-Windows\\Launch\\Scripts\\SysprepInstance.ps1 -NoShutdown"
+            ]
+        }
+    ],
+    "post-processors": [
+        {
+            "type": "manifest"
+        }
+    ]
+}
